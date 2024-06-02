@@ -6,7 +6,7 @@ const express = require('express');
 const ejs = require('ejs');
 const mongoose = require('mongoose');
 const { Schema, model } = mongoose;
-const encrypt = require('mongoose-encryption');
+const md5 = require('md5');
 
 const app = express();
 
@@ -30,11 +30,6 @@ const userSchema = new Schema({
   password: String,
 });
 
-userSchema.plugin(encrypt, {
-  secret: process.env.SECRET,
-  encryptedFields: ['password'],
-});
-
 const User = model('User', userSchema);
 
 app
@@ -54,17 +49,17 @@ app
   .post(async (req, res) => {
     try {
       const username = req.body.username;
-      const password = req.body.password;
+      const password = md5(req.body.password);
 
       const foundUser = await User.findOne({ email: username });
       if (foundUser) {
         if (foundUser.password === password) {
           res.render('secrets');
         } else {
-          alert('Wrong Password');
+          res.send('Wrong Password');
         }
       } else {
-        alert('Could not find User');
+        res.send('Could not find User');
       }
     } catch (err) {
       console.error(`Failed to login user, ${err}`);
@@ -82,7 +77,7 @@ app
     try {
       const newUser = await User.create({
         email: req.body.username,
-        password: req.body.password,
+        password: md5(req.body.password),
       });
 
       res.render('secrets');
