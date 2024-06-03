@@ -6,7 +6,8 @@ const express = require('express');
 const ejs = require('ejs');
 const mongoose = require('mongoose');
 const { Schema, model } = mongoose;
-const md5 = require('md5');
+const bcrypt = require('bcrypt');
+const saltRounds = 10;
 
 const app = express();
 
@@ -49,17 +50,17 @@ app
   .post(async (req, res) => {
     try {
       const username = req.body.username;
-      const password = md5(req.body.password);
+      const password = req.body.password;
 
       const foundUser = await User.findOne({ email: username });
       if (foundUser) {
-        if (foundUser.password === password) {
+        if (await bcrypt.compare(password, foundUser.password)) {
           res.render('secrets');
         } else {
           res.send('Wrong Password');
         }
       } else {
-        res.send('Could not find User');
+        res.send('User not found');
       }
     } catch (err) {
       console.error(`Failed to login user, ${err}`);
@@ -75,9 +76,10 @@ app
 
   .post(async (req, res) => {
     try {
+      const hash = await bcrypt.hash(req.body.password, saltRounds);
       const newUser = await User.create({
         email: req.body.username,
-        password: md5(req.body.password),
+        password: hash,
       });
 
       res.render('secrets');
