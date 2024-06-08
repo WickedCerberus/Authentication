@@ -46,6 +46,7 @@ const userSchema = new Schema({
   password: String,
   googleId: String,
   facebookId: String,
+  secret: String,
 });
 
 userSchema.plugin(passportLocalMongoose);
@@ -75,7 +76,7 @@ passport.use(
       callbackURL: 'http://localhost:3000/auth/google/secrets',
     },
     function (accessToken, refreshToken, profile, cb) {
-      console.log(profile);
+      // console.log(profile);
       User.findOrCreate({ googleId: profile.id }, function (err, user) {
         return cb(err, user);
       });
@@ -92,7 +93,7 @@ passport.use(
       state: true,
     },
     function verify(accessToken, refreshToken, profile, cb) {
-      console.log(profile);
+      // console.log(profile);
       User.findOrCreate({ facebookId: profile.id }, function (err, user) {
         return cb(err, user);
       });
@@ -181,11 +182,40 @@ app
 app
   .route('/secrets')
 
+  .get(async (req, res) => {
+    try {
+      const users = await User.find({ secret: { $ne: null } });
+      if (users) {
+        res.render('secrets', { usersWithSecrets: users });
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  });
+
+app
+  .route('/submit')
+
   .get((req, res) => {
     if (req.isAuthenticated()) {
-      res.render('secrets');
+      res.render('submit');
     } else {
       res.redirect('/login');
+    }
+  })
+
+  .post(async (req, res) => {
+    try {
+      const userSecret = req.body.secret;
+
+      const user = await User.findById(req.user.id);
+      if (user) {
+        user.secret = userSecret;
+        await user.save();
+        res.redirect('/secrets');
+      }
+    } catch (err) {
+      console.error(err);
     }
   });
 
